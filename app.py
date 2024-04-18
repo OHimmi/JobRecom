@@ -53,7 +53,7 @@ if uploaded_file is not None:
     st.write("Extracted Text:")
     st.text_area("Text", value=extracted_text, height=300)
     
-    if st.button('Find Similar Jobs'):
+    if st.button('Find Relevant Jobs'):
         similar_jobs = find_similar_jobs(extracted_text)
         st.write("Top Job Recommendations:")
         st.dataframe(similar_jobs[['job_title', 'function', 'Profil recherché']])
