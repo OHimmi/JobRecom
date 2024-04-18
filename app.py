@@ -1,42 +1,59 @@
 import streamlit as st
-import pdfplumber
-from PIL import Image
-import io
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer, util
+import fitz  # PyMuPDF
+import os
 
-def extract_text_and_images_from_pdf(file):
-    with pdfplumber.open(file) as pdf:
-        full_text = ''
-        images = []
-        for page in pdf.pages:
-            full_text += page.extract_text() if page.extract_text() else ''
-            for img in page.images:
-                # Extract images
-                image_obj = page.to_image()
-                bbox = (img['x0'], img['top'], img['x1'], img['bottom'])
-                cropped_image = image_obj.crop(bbox)
-                images.append(cropped_image.image.convert('RGB'))
-        return full_text, images
+# Function to load and combine split data files
+@st.cache_data
+def load_data(vectors_folder, dataframe_folder):
+    # Load and concatenate all CSV files
+    csv_files = [f for f in os.listdir(dataframe_folder) if f.endswith('.csv')]
+    frames = [pd.read_csv(os.path.join(dataframe_folder, f)) for f in csv_files]
+    jobs_df = pd.concat(frames, ignore_index=True)
+    
+    # Load and concatenate all NPY files
+    npy_files = sorted([f for f in os.listdir(vectors_folder) if f.endswith('.npy')])
+    arrays = [np.load(os.path.join(vectors_folder, f)) for f in npy_files]
+    job_vectors = np.concatenate(arrays, axis=0)
+    
+    return job_vectors, jobs_df
+
+# Specify the folders where the split files are stored
+vectors_folder = 'splits'
+dataframe_folder = 'splits'
+job_vectors, jobs_df = load_data(vectors_folder, dataframe_folder)
+
+model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+def extract_text_from_pdf(file_path):
+    doc = fitz.open(file_path)
+    full_text = ""
+    for page_number in range(len(doc)):
+        page = doc[page_number]
+        full_text += page.get_text()
+    return full_text
+
+def find_similar_jobs(resume_text, top_k=5):
+    resume_vector = model.encode(resume_text)
+    similarities = util.cos_sim(resume_vector, job_vectors)
+    top_results = np.argsort(-similarities[0])[:top_k]
+    return jobs_df.iloc[top_results]
 
 st.title('Job Recommendation System')
 uploaded_file = st.file_uploader("Upload Your Resume", type=["pdf"])
 
 if uploaded_file is not None:
-    text, images = extract_text_and_images_from_pdf(uploaded_file)
-    st.write("Extracted Text:", text)
+    temp_pdf_path = "temp_uploaded_resume.pdf"
+    with open(temp_pdf_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
     
-    if images:
-        for i, image in enumerate(images):
-            st.image(image, caption=f"Image {i+1}")
-            # Save image to a bytes buffer
-            buf = io.BytesIO()
-            image.save(buf, format='JPEG')
-            byte_im = buf.getvalue()
-            st.download_button(
-                label="Download Image",
-                data=byte_im,
-                file_name=f"image_{i+1}.jpg",
-                mime="image/jpeg"
-            )
-    else:
-        st.write("No images found in the resume.")
-    # Add your recommendation logic here based on the extracted text
+    extracted_text = extract_text_from_pdf(temp_pdf_path)
+    st.write("Extracted Text:")
+    st.text_area("Text", value=extracted_text, height=300)
+    
+    if st.button('Find Similar Jobs'):
+        similar_jobs = find_similar_jobs(extracted_text)
+        st.write("Top Job Recommendations:")
+        st.dataframe(similar_jobs[['job_title', 'function', 'Profil recherché']])
