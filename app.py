@@ -5,27 +5,31 @@ from sentence_transformers import SentenceTransformer, util
 import fitz  # PyMuPDF
 import os
 
-# Function to load and combine split data files
-@st.cache
-def load_data(vectors_folder, dataframe_folder):
+# Efficiently load and cache the model
+@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None, "builtins.weakref": lambda _: None})
+def load_model():
+    model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    return model
+
+# Function to load and merge data from split CSV and NPY files
+@st.cache(allow_output_mutation=True)
+def load_data(csv_folder, npy_folder):
     # Load and concatenate all CSV files
-    csv_files = [f for f in os.listdir(dataframe_folder) if f.endswith('.csv')]
-    frames = [pd.read_csv(os.path.join(dataframe_folder, f)) for f in csv_files]
-    jobs_df = pd.concat(frames, ignore_index=True)
-    
+    csv_files = sorted([f for f in os.listdir(csv_folder) if f.endswith('.csv')])
+    jobs_df = pd.concat((pd.read_csv(os.path.join(csv_folder, f)) for f in csv_files), ignore_index=True)
+
     # Load and concatenate all NPY files
-    npy_files = sorted([f for f in os.listdir(vectors_folder) if f.endswith('.npy')])
-    arrays = [np.load(os.path.join(vectors_folder, f)) for f in npy_files]
-    job_vectors = np.concatenate(arrays, axis=0)
+    npy_files = sorted([f for f in os.listdir(npy_folder) if f.endswith('.npy')])
+    job_vectors = np.concatenate([np.load(os.path.join(npy_folder, f)) for f in npy_files], axis=0)
     
     return job_vectors, jobs_df
 
-# Specify the folders where the split files are stored
-vectors_folder = 'splits'
-dataframe_folder = 'splits'
-job_vectors, jobs_df = load_data(vectors_folder, dataframe_folder)
+# Directories where the CSV and NPY files are stored
+csv_folder = 'splits'
+npy_folder = 'splits'
+job_vectors, jobs_df = load_data(csv_folder, npy_folder)
 
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+model = load_model()
 
 def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
@@ -53,7 +57,7 @@ if uploaded_file is not None:
     st.write("Extracted Text:")
     st.text_area("Text", value=extracted_text, height=300)
     
-    if st.button('Find Relevant Jobs'):
+    if st.button('Find Similar Jobs'):
         similar_jobs = find_similar_jobs(extracted_text)
         st.write("Top Job Recommendations:")
         st.dataframe(similar_jobs[['job_title', 'function', 'Profil recherché']])
