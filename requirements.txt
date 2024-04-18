@@ -7,3 +7,5 @@ scikit-learn
 nltk
 gensim
 spacy
+PyMuPDF
+sentence_transformers
