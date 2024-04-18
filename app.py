@@ -6,7 +6,6 @@ import fitz  # PyMuPDF
 import os
 
 # Function to load and combine split data files
-@st.cache_data
 def load_data(vectors_folder, dataframe_folder):
     # Load and concatenate all CSV files
     csv_files = [f for f in os.listdir(dataframe_folder) if f.endswith('.csv')]
