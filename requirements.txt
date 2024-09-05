@@ -8,5 +8,5 @@ nltk
 gensim
 spacy
 PyMuPDF
-sentence-transformers
+sentence_transformers
 huggingface_hub
