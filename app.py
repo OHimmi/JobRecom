@@ -11,6 +11,7 @@ from huggingface_hub import InferenceClient
 import json
 
 nltk.download('punkt')
+nltk.download('punkt_tab')
 nltk.download('stopwords')
 
 # Load the model and job offer embeddings
