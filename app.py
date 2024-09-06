@@ -33,8 +33,8 @@ def preprocess_text(text):
     text = text.replace("'", " ")  # Replace apostrophes with spaces
     text = text.replace("’", " ")  # Replace apostrophes with spaces
     text = text.replace("`", " ")  # Replace apostrophes with spaces
-    text = re.sub(r'\b(nan)\b', ' ', text)  # Remove occurrences of the word "nan"
     text = re.sub(r'\d+', ' ', text)  # Remove digits
+    text = re.sub(r'\b(nan)\b', ' ', text)  # Remove occurrences of the word "nan"
     text = re.sub(r'[^\w\s]', ' ', text)  # Remove punctuation
     text = re.sub(r'\s+', ' ', text)  # Remove multiple spaces
     tokens = word_tokenize(text)  # Tokenize
@@ -52,11 +52,11 @@ def find_top_20_job_offers(resume):
     resume_embedding = model.encode(resume, convert_to_tensor=True)
     similarities = util.cos_sim(resume_embedding, job_vectors)
     similarities = similarities.numpy().flatten()
-    top_20_indices = np.argsort(similarities)[-20:][::-1]
+    top_20_indices = np.argsort(similarities)[-15:][::-1]
     top_20_job_offers = data.iloc[top_20_indices]
     return top_20_job_offers['Original_Job_Offer'].tolist(), top_20_indices
 
-def truncate_text(text, max_length=380):
+def truncate_text(text, max_length=350):
     """Truncate the text to a maximum length, ensuring it doesn't cut off in the middle of a word."""
     if len(text) <= max_length:
         return text
@@ -69,7 +69,7 @@ def generate_prompt(resume_text, top_20_job_offers):
 
     prompt = (
         f"En vous basant sur le CV suivant:\n{resume_text}\n\n"
-        f"Voici 20 offres d'emploi pertinentes:\n{truncated_job_offers_text}\n\n"
+        f"Voici 15 offres d'emploi pertinentes:\n{truncated_job_offers_text}\n\n"
         "Tu dois recommander les 5 offres d'emploi les plus pertinentes pour le CV fourni en se basant sur les compétences (Suis ce format : Titre du poste - Ville - Résumé du rôle)"
     )
     return prompt
@@ -79,7 +79,7 @@ def get_recommendations(prompt):
             json={
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": 700,
+                    "max_new_tokens": 1200,
                     "temperature": 0.01
                 }
             },
@@ -107,7 +107,7 @@ if uploaded_file is not None:
     if st.button('Find Relevant Jobs'):
         preprocessed_resume = preprocess_text(extracted_text)
         top_20_job_offers, top_20_indices = find_top_20_job_offers(preprocessed_resume)
-        prompt = generate_prompt(preprocessed_resume, top_20_job_offers)
+        prompt = generate_prompt(extracted_text, top_20_job_offers)
         recommendations = get_recommendations(prompt)
         st.write("Top 5 Job Recommendations:")
         st.text_area("Recommendations", value=recommendations, height=300)
