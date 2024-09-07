@@ -68,9 +68,9 @@ def generate_prompt(resume_text, top_20_job_offers):
     truncated_job_offers_text = "\n\n".join(truncated_job_offers)
 
     prompt = (
-        f"En vous basant sur le CV suivant:\n{resume_text}\n\n"
-        f"Voici 15 offres d'emploi pertinentes:\n{truncated_job_offers_text}\n\n"
-        "Tu dois recommander les 5 offres d'emploi les plus pertinentes pour le CV fourni en se basant sur les compétences (Suis ce format : Titre du poste - Ville - Résumé du rôle)"
+        f"En se basant sur le CV suivant:\n{resume_text}\n\n"
+        f"Voici 20 offres d'emploi pertinentes:\n{truncated_job_offers_text}\n\n"
+        "Tu dois recommander les 5 offres d'emploi les plus pertinentes pour le CV fourni en te basant sur les compétences et l'expérience (Suis ce format : Titre du poste - Ville - Résumé du rôle)."
     )
     return prompt
 
